@@ -1,10 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StoryboardData } from "../types";
 
+/**
+ * Creates a new instance of the GoogleGenAI client using the environment's API key.
+ * In a Vite build, this key must be injected via define or VITE_ prefix.
+ */
 const getAIClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
-    throw new Error("API_KEY is missing. Ensure the 'API_KEY' environment variable is set in your deployment settings.");
+    throw new Error("API_KEY is missing. Please ensure you have added the 'API_KEY' environment variable to your deployment settings (e.g., Vercel Project Settings).");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -65,11 +69,11 @@ export const analyzeContent = async (text: string, images: string[]): Promise<St
 
   try {
     const responseText = response.text;
-    if (!responseText) throw new Error("Empty response from analysis model.");
+    if (!responseText) throw new Error("Empty response from content analysis.");
     return JSON.parse(responseText.trim()) as StoryboardData;
   } catch (e) {
-    console.error("Failed to parse analysis result:", e);
-    throw new Error("Failed to interpret content analysis. The model might have returned an invalid format.");
+    console.error("Analysis parsing error:", e);
+    throw new Error("Failed to interpret content analysis. The AI response was not in the expected format.");
   }
 };
 
@@ -77,6 +81,7 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
   const ai = getAIClient();
   const parts: any[] = [];
 
+  // Provide the previous image as context to maintain visual continuity across scenes
   if (previousImageUrl) {
     const match = previousImageUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (match) {
@@ -87,7 +92,7 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
         }
       });
       parts.push({
-        text: `Reference the characters and art style from the provided image. Now generate a NEW image for this specific scene: ${prompt}`
+        text: `Referring to the characters and art style in the provided image, create a NEW image for this scene: ${prompt}`
       });
     } else {
       parts.push({ text: prompt });
@@ -109,7 +114,7 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content?.parts) {
-      throw new Error("The image generation model returned no content.");
+      throw new Error("The image generation model returned no content. This might be due to safety filters or regional availability.");
     }
 
     for (const part of candidate.content.parts) {
@@ -118,15 +123,15 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
       }
     }
 
-    // Handle cases where the model returns text instead (e.g., safety block)
+    // Handle text-only responses from the image model (usually safety blocks)
     const textPart = candidate.content.parts.find(p => p.text);
     if (textPart) {
-      throw new Error(`Model returned a text response instead of an image: ${textPart.text}`);
+      throw new Error(`Generation Note: ${textPart.text}`);
     }
 
-    throw new Error("No image data found in the AI response.");
+    throw new Error("No image was generated. Please try a different prompt or content.");
   } catch (err: any) {
-    console.error("Image generation failed:", err);
+    console.error("Image generation service error:", err);
     throw err;
   }
 };

@@ -32,44 +32,39 @@ const App: React.FC = () => {
       setScenes([]);
 
       const imageBase64s = await Promise.all(files.map(fileToBase64));
-      
       const storyboardData = await analyzeContent(text, imageBase64s);
       
-      // Initialize scenes with no images yet
       setScenes(storyboardData.scenes);
       
       setProcessingState({
         status: AppStatus.GENERATING_IMAGES,
         progress: 30,
-        message: 'Bringing your story to life... generating images.'
+        message: 'Generating illustrations...'
       });
 
       const totalScenes = storyboardData.scenes.length;
       const updatedScenes = [...storyboardData.scenes];
-      let lastGeneratedImageUrl: string | undefined = undefined;
 
-      // Generate images sequentially to ensure continuity by passing the previous image
       for (let i = 0; i < totalScenes; i++) {
         const scene = updatedScenes[i];
         
         setProcessingState(prev => ({
           ...prev,
           progress: 30 + Math.floor(((i + 1) / totalScenes) * 60),
-          message: `Illustrating scene ${i + 1} of ${totalScenes}: ${scene.title}`
+          message: `Illustrating scene ${i + 1} of ${totalScenes}...`
         }));
 
         try {
-          // Pass the previous image URL as a reference for consistency
-          const imageUrl = await generateSceneImage(scene.visualPrompt, lastGeneratedImageUrl);
+          const imageUrl = await generateSceneImage(scene.visualPrompt);
           updatedScenes[i] = { ...scene, imageUrl };
-          lastGeneratedImageUrl = imageUrl;
-          
-          // Real-time update of scenes
           setScenes([...updatedScenes]);
-        } catch (imgError) {
-          console.warn(`Failed to generate image for scene ${i + 1}`, imgError);
-          // Don't fail the whole process, just leave image blank and continue without context
-          lastGeneratedImageUrl = undefined; 
+        } catch (imgError: any) {
+          console.error(`Failed to generate image for scene ${i + 1}:`, imgError);
+          // Update the UI message to inform the user of partial failure
+          setProcessingState(prev => ({
+            ...prev,
+            message: `Warning: Failed to generate image ${i + 1}. ${imgError.message}`
+          }));
         }
       }
 
@@ -80,7 +75,7 @@ const App: React.FC = () => {
       });
 
     } catch (error: any) {
-      console.error("Processing error:", error);
+      console.error("Major processing error:", error);
       setProcessingState({
         status: AppStatus.ERROR,
         progress: 0,
@@ -105,8 +100,6 @@ const App: React.FC = () => {
       
       <main className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
-          {/* Left Column: Input */}
           <div className="lg:col-span-1 lg:sticky lg:top-8">
             <InputSection 
               onProcess={handleProcess} 
@@ -116,7 +109,7 @@ const App: React.FC = () => {
             {processingState.status !== AppStatus.IDLE && (
               <div className="mt-6 bg-white p-5 rounded-xl shadow-md border border-slate-200">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-bold text-slate-700 uppercase tracking-tight">Status</h3>
+                  <h3 className="text-sm font-bold text-slate-700 uppercase">Status</h3>
                   <span className="text-xs text-orange-600 font-semibold">{processingState.progress}%</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2 mb-4 overflow-hidden">
@@ -125,14 +118,7 @@ const App: React.FC = () => {
                     style={{ width: `${processingState.progress}%` }}
                   ></div>
                 </div>
-                <p className="text-sm text-slate-600 flex items-center">
-                  {processingState.status === AppStatus.ANALYZING || processingState.status === AppStatus.GENERATING_IMAGES ? (
-                    <i className="fas fa-sync fa-spin mr-2 text-orange-500"></i>
-                  ) : processingState.status === AppStatus.COMPLETED ? (
-                    <i className="fas fa-check-circle mr-2 text-green-500"></i>
-                  ) : processingState.status === AppStatus.ERROR ? (
-                    <i className="fas fa-exclamation-triangle mr-2 text-red-500"></i>
-                  ) : null}
+                <p className="text-sm text-slate-600">
                   {processingState.message}
                 </p>
                 {processingState.error && (
@@ -152,7 +138,6 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Right Column: Results */}
           <div className="lg:col-span-2">
             {scenes.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -164,22 +149,11 @@ const App: React.FC = () => {
               <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border-2 border-dashed border-slate-200 opacity-60">
                 <i className="fas fa-film text-6xl text-slate-300 mb-4"></i>
                 <p className="text-slate-400 font-medium text-lg">Your storyboard will appear here</p>
-                <p className="text-slate-400 text-sm">Fill out the form to generate sequential illustrations</p>
               </div>
             )}
           </div>
         </div>
       </main>
-
-      {/* Floating Action Button for Support (Aesthetic) */}
-      <div className="fixed bottom-6 right-6">
-        <button 
-          title="How it works"
-          className="bg-orange-600 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center text-white hover:bg-orange-700 transition-transform hover:scale-110"
-        >
-          <i className="fas fa-question"></i>
-        </button>
-      </div>
     </div>
   );
 };

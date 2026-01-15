@@ -3,12 +3,11 @@ import { StoryboardData } from "../types";
 
 /**
  * Creates a new instance of the GoogleGenAI client using the environment's API key.
- * In a Vite build, this key must be injected via define or VITE_ prefix.
  */
 const getAIClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
-    throw new Error("API_KEY is missing. Please ensure you have added the 'API_KEY' environment variable to your deployment settings (e.g., Vercel Project Settings).");
+    throw new Error("API_KEY is missing. Ensure the 'API_KEY' environment variable is set in your Vercel project settings.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -20,9 +19,9 @@ export const analyzeContent = async (text: string, images: string[]): Promise<St
   For each scene, provide:
   1. A short, descriptive title.
   2. A brief educational description of what is happening.
-  3. A detailed visual prompt for an image generator. The visual prompts should be vivid, descriptive, and ensure a consistent illustrative style (e.g., "colorful digital storybook illustration style, clean lines, educational and child-friendly") while clearly depicting the unique event of that specific scene.
+  3. A detailed visual prompt for an image generator. The visual prompts should be vivid, descriptive, and ensure a consistent illustrative style (e.g., "vibrant educational illustration style, clean digital art, friendly for students") while clearly depicting the unique event of that specific scene.
   
-  Ensure the scenes progress logically through the content and characters remain consistent.`;
+  Return the response in valid JSON format according to the schema.`;
 
   const parts: any[] = [{ text: prompt }];
   if (text) parts.push({ text: `Content Text: ${text}` });
@@ -69,42 +68,26 @@ export const analyzeContent = async (text: string, images: string[]): Promise<St
 
   try {
     const responseText = response.text;
-    if (!responseText) throw new Error("Empty response from content analysis.");
+    if (!responseText) throw new Error("Analysis model returned no text.");
     return JSON.parse(responseText.trim()) as StoryboardData;
   } catch (e) {
     console.error("Analysis parsing error:", e);
-    throw new Error("Failed to interpret content analysis. The AI response was not in the expected format.");
+    throw new Error("Could not parse the storyboard data from AI.");
   }
 };
 
-export const generateSceneImage = async (prompt: string, previousImageUrl?: string): Promise<string> => {
+export const generateSceneImage = async (prompt: string): Promise<string> => {
   const ai = getAIClient();
-  const parts: any[] = [];
-
-  // Provide the previous image as context to maintain visual continuity across scenes
-  if (previousImageUrl) {
-    const match = previousImageUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (match) {
-      parts.push({
-        inlineData: {
-          mimeType: match[1],
-          data: match[2]
-        }
-      });
-      parts.push({
-        text: `Referring to the characters and art style in the provided image, create a NEW image for this scene: ${prompt}`
-      });
-    } else {
-      parts.push({ text: prompt });
-    }
-  } else {
-    parts.push({ text: prompt });
-  }
+  
+  // Simplified: No previous image context to ensure highest reliability for base generation
+  const contents = { 
+    parts: [{ text: `Generate a high-quality educational illustration for a storyboard: ${prompt}` }] 
+  };
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: { parts },
+      contents,
       config: {
         imageConfig: {
           aspectRatio: "16:9"
@@ -114,7 +97,7 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content?.parts) {
-      throw new Error("The image generation model returned no content. This might be due to safety filters or regional availability.");
+      throw new Error("No parts found in the response candidate.");
     }
 
     for (const part of candidate.content.parts) {
@@ -123,15 +106,15 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
       }
     }
 
-    // Handle text-only responses from the image model (usually safety blocks)
+    // Check for text-only error messages from the model (e.g., safety block)
     const textPart = candidate.content.parts.find(p => p.text);
     if (textPart) {
-      throw new Error(`Generation Note: ${textPart.text}`);
+      throw new Error(`Model Response: ${textPart.text}`);
     }
 
-    throw new Error("No image was generated. Please try a different prompt or content.");
+    throw new Error("The AI did not return an image part.");
   } catch (err: any) {
-    console.error("Image generation service error:", err);
-    throw err;
+    console.error("Image generation error:", err);
+    throw new Error(err.message || "Unknown image generation error");
   }
 };

@@ -2,10 +2,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StoryboardScene, StoryboardData } from "../types";
 
-const API_KEY = process.env.API_KEY || '';
-
 export const analyzeContent = async (text: string, images: string[]): Promise<StoryboardData> => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  // Initialize AI client inside the function to ensure the latest environment variables are used
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `Analyze the following book content (text and/or images) and break it down into 4 distinct, sequential storyboard scenes that illustrate the key moments or big ideas. 
   For each scene, provide:
@@ -66,12 +65,11 @@ export const analyzeContent = async (text: string, images: string[]): Promise<St
 };
 
 export const generateSceneImage = async (prompt: string, previousImageUrl?: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const parts: any[] = [];
 
   if (previousImageUrl) {
-    // Extract base64 data and mime type from data URL
     const match = previousImageUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (match) {
       parts.push({
@@ -100,7 +98,6 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
     }
   });
 
-  // Iterate through parts to find the image
   for (const part of response.candidates?.[0]?.content?.parts || []) {
     if (part.inlineData) {
       return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;

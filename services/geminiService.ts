@@ -91,7 +91,9 @@ export const generateSceneImage = async (prompt: string, contextImageUrl?: strin
         }
       });
       parts.push({
-        text: `Maintain strict character design and artistic style consistency with the attached reference image. Using that same style and the same characters, create a NEW illustration for this specific scene: ${prompt}`
+        text: `You are illustrating a sequence. The attached image shows the characters and style established so far. 
+        TASK: Generate a NEW image for the next scene while maintaining 100% consistency in character appearance, clothing, and artistic style. 
+        SCENE DESCRIPTION: ${prompt}`
       });
     } else {
       parts.push({ text: prompt });
@@ -113,7 +115,7 @@ export const generateSceneImage = async (prompt: string, contextImageUrl?: strin
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content?.parts) {
-      throw new Error("The AI model returned an empty response.");
+      throw new Error("The AI model returned an empty response. Check API logs for safety filters.");
     }
 
     for (const part of candidate.content.parts) {
@@ -124,10 +126,10 @@ export const generateSceneImage = async (prompt: string, contextImageUrl?: strin
 
     const textPart = candidate.content.parts.find(p => p.text);
     if (textPart) {
-      throw new Error(`Safety/Policy Note: ${textPart.text}`);
+      throw new Error(`Generation feedback: ${textPart.text}`);
     }
 
-    throw new Error("No image data was found in the model response.");
+    throw new Error("No image data found in model response.");
   } catch (err: any) {
     console.error("Image generation service error:", err);
     throw new Error(err.message || "Unknown generation error");

@@ -1,16 +1,22 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { StoryboardData } from "../types";
 
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY is missing. Ensure the 'API_KEY' environment variable is set in your deployment settings.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 export const analyzeContent = async (text: string, images: string[]): Promise<StoryboardData> => {
-  // Initialize AI client inside the function to ensure the latest environment variables are used
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIClient();
   
   const prompt = `Analyze the following book content (text and/or images) and break it down into 4 distinct, sequential storyboard scenes that illustrate the key moments or big ideas. 
   For each scene, provide:
   1. A short, descriptive title.
   2. A brief educational description of what is happening.
-  3. A detailed visual prompt for an image generator. The visual prompts should be vivid, descriptive, and ensure a consistent illustrative style (e.g., "watercolor storybook style" or "clean modern educational illustration") while clearly depicting the unique event of that specific scene.
+  3. A detailed visual prompt for an image generator. The visual prompts should be vivid, descriptive, and ensure a consistent illustrative style (e.g., "colorful digital storybook illustration style, clean lines, educational and child-friendly") while clearly depicting the unique event of that specific scene.
   
   Ensure the scenes progress logically through the content and characters remain consistent.`;
 
@@ -18,7 +24,9 @@ export const analyzeContent = async (text: string, images: string[]): Promise<St
   if (text) parts.push({ text: `Content Text: ${text}` });
   
   images.forEach((imgBase64) => {
-    const data = imgBase64.split(',')[1];
+    const split = imgBase64.split(',');
+    if (split.length < 2) return;
+    const data = split[1];
     const mimeType = imgBase64.split(';')[0].split(':')[1];
     parts.push({
       inlineData: {
@@ -56,17 +64,17 @@ export const analyzeContent = async (text: string, images: string[]): Promise<St
   });
 
   try {
-    const result = JSON.parse(response.text || '{}');
-    return result as StoryboardData;
+    const responseText = response.text;
+    if (!responseText) throw new Error("Empty response from analysis model.");
+    return JSON.parse(responseText.trim()) as StoryboardData;
   } catch (e) {
-    console.error("Failed to parse analysis result", e);
-    throw new Error("Failed to interpret content analysis.");
+    console.error("Failed to parse analysis result:", e);
+    throw new Error("Failed to interpret content analysis. The model might have returned an invalid format.");
   }
 };
 
 export const generateSceneImage = async (prompt: string, previousImageUrl?: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+  const ai = getAIClient();
   const parts: any[] = [];
 
   if (previousImageUrl) {
@@ -79,7 +87,7 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
         }
       });
       parts.push({
-        text: `Using the character designs, environment details, and artistic style from the provided image as a strict reference, generate a NEW image for the next scene in the story. Ensure the characters look identical in features and clothing. Scene to generate: ${prompt}`
+        text: `Reference the characters and art style from the provided image. Now generate a NEW image for this specific scene: ${prompt}`
       });
     } else {
       parts.push({ text: prompt });
@@ -88,21 +96,37 @@ export const generateSceneImage = async (prompt: string, previousImageUrl?: stri
     parts.push({ text: prompt });
   }
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: { parts },
-    config: {
-      imageConfig: {
-        aspectRatio: "16:9"
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { parts },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
+    });
+
+    const candidate = response.candidates?.[0];
+    if (!candidate?.content?.parts) {
+      throw new Error("The image generation model returned no content.");
+    }
+
+    for (const part of candidate.content.parts) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
       }
     }
-  });
 
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    // Handle cases where the model returns text instead (e.g., safety block)
+    const textPart = candidate.content.parts.find(p => p.text);
+    if (textPart) {
+      throw new Error(`Model returned a text response instead of an image: ${textPart.text}`);
     }
-  }
 
-  throw new Error("No image data returned from generator.");
+    throw new Error("No image data found in the AI response.");
+  } catch (err: any) {
+    console.error("Image generation failed:", err);
+    throw err;
+  }
 };

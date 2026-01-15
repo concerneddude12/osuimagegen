@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from './components/Header';
 import InputSection from './components/InputSection';
@@ -108,7 +107,7 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
           {/* Left Column: Input */}
-          <div className="lg:col-span-1 sticky top-8">
+          <div className="lg:col-span-1 lg:sticky lg:top-8">
             <InputSection 
               onProcess={handleProcess} 
               isLoading={processingState.status === AppStatus.ANALYZING || processingState.status === AppStatus.GENERATING_IMAGES} 
@@ -118,17 +117,17 @@ const App: React.FC = () => {
               <div className="mt-6 bg-white p-5 rounded-xl shadow-md border border-slate-200">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-bold text-slate-700 uppercase tracking-tight">Status</h3>
-                  <span className="text-xs text-indigo-600 font-semibold">{processingState.progress}%</span>
+                  <span className="text-xs text-orange-600 font-semibold">{processingState.progress}%</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2 mb-4 overflow-hidden">
                   <div 
-                    className="bg-indigo-600 h-full transition-all duration-500 ease-out"
+                    className="bg-orange-500 h-full transition-all duration-500 ease-out"
                     style={{ width: `${processingState.progress}%` }}
                   ></div>
                 </div>
                 <p className="text-sm text-slate-600 flex items-center">
                   {processingState.status === AppStatus.ANALYZING || processingState.status === AppStatus.GENERATING_IMAGES ? (
-                    <i className="fas fa-sync fa-spin mr-2 text-indigo-500"></i>
+                    <i className="fas fa-sync fa-spin mr-2 text-orange-500"></i>
                   ) : processingState.status === AppStatus.COMPLETED ? (
                     <i className="fas fa-check-circle mr-2 text-green-500"></i>
                   ) : processingState.status === AppStatus.ERROR ? (
@@ -176,7 +175,7 @@ const App: React.FC = () => {
       <div className="fixed bottom-6 right-6">
         <button 
           title="How it works"
-          className="bg-indigo-600 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center text-white hover:bg-indigo-700 transition-transform hover:scale-110"
+          className="bg-orange-600 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center text-white hover:bg-orange-700 transition-transform hover:scale-110"
         >
           <i className="fas fa-question"></i>
         </button>

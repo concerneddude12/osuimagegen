@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { StoryboardScene } from '../types';
 
@@ -22,12 +21,12 @@ const StoryboardCard: React.FC<StoryboardCardProps> = ({ scene }) => {
             <span className="text-xs font-medium uppercase tracking-widest">Generating Image...</span>
           </div>
         )}
-        <div className="absolute top-3 left-3 bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md">
+        <div className="absolute top-3 left-3 bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-md">
           {scene.id}
         </div>
       </div>
       <div className="p-5">
-        <h3 className="font-bold text-slate-800 text-lg mb-2 group-hover:text-indigo-600 transition-colors">
+        <h3 className="font-bold text-slate-800 text-lg mb-2 group-hover:text-orange-600 transition-colors">
           {scene.title}
         </h3>
         <p className="text-slate-600 text-sm leading-relaxed italic">
@@ -44,7 +43,7 @@ const StoryboardCard: React.FC<StoryboardCardProps> = ({ scene }) => {
                 link.click();
             }
           }}
-          className="text-indigo-500 hover:text-indigo-700 text-sm font-semibold flex items-center"
+          className="text-orange-600 hover:text-orange-700 text-sm font-semibold flex items-center"
           disabled={!scene.imageUrl}
         >
           <i className="fas fa-download mr-1"></i> Download

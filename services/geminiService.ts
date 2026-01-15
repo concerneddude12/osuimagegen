@@ -76,18 +76,34 @@ export const analyzeContent = async (text: string, images: string[]): Promise<St
   }
 };
 
-export const generateSceneImage = async (prompt: string): Promise<string> => {
+export const generateSceneImage = async (prompt: string, contextImageUrl?: string): Promise<string> => {
   const ai = getAIClient();
-  
-  // Simplified: No previous image context to ensure highest reliability for base generation
-  const contents = { 
-    parts: [{ text: `Generate a high-quality educational illustration for a storyboard: ${prompt}` }] 
-  };
+  const parts: any[] = [];
+
+  // If a previous image exists, use it as visual context to maintain character and style consistency
+  if (contextImageUrl) {
+    const match = contextImageUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (match) {
+      parts.push({
+        inlineData: {
+          mimeType: match[1],
+          data: match[2]
+        }
+      });
+      parts.push({
+        text: `Maintain strict character design and artistic style consistency with the attached reference image. Using that same style and the same characters, create a NEW illustration for this specific scene: ${prompt}`
+      });
+    } else {
+      parts.push({ text: prompt });
+    }
+  } else {
+    parts.push({ text: prompt });
+  }
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents,
+      contents: { parts },
       config: {
         imageConfig: {
           aspectRatio: "16:9"
@@ -97,7 +113,7 @@ export const generateSceneImage = async (prompt: string): Promise<string> => {
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content?.parts) {
-      throw new Error("No parts found in the response candidate.");
+      throw new Error("The AI model returned an empty response.");
     }
 
     for (const part of candidate.content.parts) {
@@ -106,15 +122,14 @@ export const generateSceneImage = async (prompt: string): Promise<string> => {
       }
     }
 
-    // Check for text-only error messages from the model (e.g., safety block)
     const textPart = candidate.content.parts.find(p => p.text);
     if (textPart) {
-      throw new Error(`Model Response: ${textPart.text}`);
+      throw new Error(`Safety/Policy Note: ${textPart.text}`);
     }
 
-    throw new Error("The AI did not return an image part.");
+    throw new Error("No image data was found in the model response.");
   } catch (err: any) {
-    console.error("Image generation error:", err);
-    throw new Error(err.message || "Unknown image generation error");
+    console.error("Image generation service error:", err);
+    throw new Error(err.message || "Unknown generation error");
   }
 };

@@ -44,6 +44,7 @@ const App: React.FC = () => {
 
       const totalScenes = storyboardData.scenes.length;
       const updatedScenes = [...storyboardData.scenes];
+      let lastImageUrl: string | undefined = undefined;
 
       for (let i = 0; i < totalScenes; i++) {
         const scene = updatedScenes[i];
@@ -55,12 +56,13 @@ const App: React.FC = () => {
         }));
 
         try {
-          const imageUrl = await generateSceneImage(scene.visualPrompt);
+          // Pass the last generated image URL as context to maintain character/style consistency
+          const imageUrl = await generateSceneImage(scene.visualPrompt, lastImageUrl);
           updatedScenes[i] = { ...scene, imageUrl };
+          lastImageUrl = imageUrl;
           setScenes([...updatedScenes]);
         } catch (imgError: any) {
           console.error(`Failed to generate image for scene ${i + 1}:`, imgError);
-          // Update the UI message to inform the user of partial failure
           setProcessingState(prev => ({
             ...prev,
             message: `Warning: Failed to generate image ${i + 1}. ${imgError.message}`

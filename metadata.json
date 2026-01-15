@@ -1,0 +1,7 @@
+{
+  "name": "osuimagegen",
+  "description": "An educational tool that transforms textbook or storybook content into a sequential, visual storyboard to help students grasp complex narratives and concepts.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

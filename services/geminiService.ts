@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { StoryboardScene, StoryboardData } from "../types";
+import { StoryboardData } from "../types";
 
 export const analyzeContent = async (text: string, images: string[]): Promise<StoryboardData> => {
   // Initialize AI client inside the function to ensure the latest environment variables are used
